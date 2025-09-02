@@ -1,27 +1,35 @@
 import numpy as np
 import pandas as pd
 
-def _feature_names_from_preprocess(pre, original_cols):
-    pre_step = pre.named_steps["pre"]
-    num_cols = pre_step.transformers_[0][2]
-    cat_cols = pre_step.transformers_[1][2]
-    out = list(num_cols)
-    ohe = pre_step.named_transformers_["cat"].named_steps["onehot"]
-    cat_feature_names = ohe.get_feature_names_out(cat_cols).tolist()
-    return out + cat_feature_names
+def extract_linear_importances(model_pipeline, original_cols):
+    """
+    Extrai os coeficientes de um modelo de regressão linear de dentro de um pipeline.
+    Esta versão é adaptada para um pré-processador simples que não altera
+    os nomes ou a ordem das features.
 
-def extract_logit_importances(model_pipe, original_cols, pre):
-    clf = model_pipe.named_steps["clf"]
-    feature_names = _feature_names_from_preprocess(model_pipe.named_steps["pre"], original_cols)
-    coefs = clf.coef_.ravel()
-    odds = np.exp(coefs)
-    df = pd.DataFrame({"feature": feature_names, "coef": coefs, "odds_ratio": odds})
-    df["abs_coef"] = df["coef"].abs()
-    return df.sort_values("abs_coef", ascending=False).drop(columns="abs_coef")
+    Args:
+        model_pipeline (sklearn.pipeline.Pipeline): O pipeline treinado que contém um passo chamado 'regressor'.
+        original_cols (list): A lista de nomes das colunas originais (features).
 
-def extract_linear_importances(model_pipe, original_cols, pre):
-    reg = model_pipe.named_steps["reg"]
-    feature_names = _feature_names_from_preprocess(model_pipe.named_steps["pre"], original_cols)
-    coefs = reg.coef_.ravel()
-    df = pd.DataFrame({"feature": feature_names, "coef": coefs, "abs_coef": np.abs(coefs)})
-    return df.sort_values("abs_coef", ascending=False)
+    Returns:
+        pandas.DataFrame: Um DataFrame com as features e seus coeficientes, ordenado pela importância.
+    """
+    # 1. Acessa o passo do regressor no nosso pipeline (que chamamos de 'regressor')
+    regressor = model_pipeline.named_steps['regressor']
+    
+    # 2. Extrai os coeficientes do modelo treinado
+    coefs = regressor.coef_.ravel()
+    
+    # 3. Cria o DataFrame final
+    # Como nosso pré-processador não muda as colunas, podemos usar os nomes originais
+    df = pd.DataFrame({
+        "Feature": original_cols, 
+        "Coefficient": coefs
+    })
+
+    # 4. Adiciona uma coluna com o valor absoluto para poder ordenar pela magnitude
+    df["abs_coef"] = df["Coefficient"].abs()
+    
+    # 5. Ordena o DataFrame pela importância (maior coeficiente em módulo)
+    # e remove a coluna auxiliar antes de retornar.
+    return df.sort_values(by="abs_coef", ascending=False).drop(columns="abs_coef")

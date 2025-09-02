@@ -1,18 +1,19 @@
-def answer_from_metrics(question: str, task: str, metrics_df_or_dict, importances_df):
-    q = (question or "").lower()
+def answer_from_metrics(prompt, task, metrics, importances):
+    """Gera uma resposta baseada em regras simples sobre as métricas do modelo."""
+    prompt = prompt.lower()
+    
+    if "importante" in prompt or "relevante" in prompt or "influencia" in prompt:
+        top_feature = importances.iloc[0]['Feature']
+        return f"Com base nos coeficientes do modelo, a variável mais influente foi **{top_feature}**."
 
-    if "importan" in q or "importân" in q or "variáve" in q or "features" in q:
-        top = importances_df.head(5)[["feature"]].to_dict("records")
-        top_str = ", ".join([t["feature"] for t in top])
-        return f"As variáveis mais influentes são: {top_str}. (Baseado em coeficientes/odds ratio)"
+    elif "métrica" in prompt or "performance" in prompt or "desempenho" in prompt:
+        return f"As principais métricas foram: **R-squared de {metrics['R-squared (R2)']:.2f}** e **MSE de {metrics['Mean Squared Error (MSE)']:.2f}**."
 
-    if "métric" in q or "score" in q or "acur" in q or "rmse" in q:
-        return f"Métricas da tarefa {task}: {metrics_df_or_dict}"
+    elif "r2" in prompt or "r-squared" in prompt:
+        return f"O **R-squared (R2)** do modelo foi de **{metrics['R-squared (R2)']:.2f}**. Isso representa a proporção da variância da variável dependente que é previsível a partir das variáveis independentes."
 
-    if "como foi treinado" in q or "pipeline" in q:
-        return "O pipeline aplica imputação, one-hot e padronização; depois treina Logistic Regression (class.) ou Linear Regression (regr.)."
-
-    if "privacid" in q or "lgpd" in q:
-        return "No MVP, evitamos dados sensíveis, anonimização por padrão e não persistimos dados pessoais. Para produção: consentimento expresso, minimização e auditoria."
-
-    return "Posso falar sobre variáveis importantes, métricas do modelo e como o pipeline funciona. Pergunte algo como 'Quais variáveis mais importam?'."
+    elif "mse" in prompt or "erro" in prompt:
+        return f"O **Mean Squared Error (MSE)** foi de **{metrics['Mean Squared Error (MSE)']:.2f}**. Ele mede a média dos quadrados dos erros entre os valores estimados e os valores reais."
+        
+    else:
+        return "Desculpe, não entendi a pergunta. Você pode perguntar sobre as 'métricas' ou qual a variável 'mais importante'."
